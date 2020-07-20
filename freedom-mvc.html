@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To Do List</title>
+    <style>
+        body{
+            margin: 0;
+        }
+        span{
+            background-color: #ffcccc;
+        }
+        input:checked + span{
+            background-color: #ccffcc;
+        }
+        .edit, .delete{
+            background-color: #fff;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .edit:hover, .delete:hover{
+            color: red;
+        }
+        .content{
+            width:50%;
+            margin: 0 auto;
+            position: relative;
+        }
+        .header{
+            text-align: center;
+        }
+        .menu_header{
+            position: relative;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .menu_header input{
+            width: 80%;
+        }
+        .menu_footer input{
+            width: 80%;
+        }
+        .menu_footer button{
+            width: 18%;
+        }
+        #popup{
+            width: 85%;
+        }
+        .inactive{
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div class="header">
+            <h2>Разработайте простой список задач на чистом JavaScript.</h2>
+            <h3>Требования:</h3>
+        </div>
+        <div class="menu_header">
+            <select id="sort">
+                <option>Все</option>
+                <option>Выполненые</option>
+                <option>Не выполненые</option>
+            </select>
+            <input type="input" id="search-field" placeholder="Введите ключевые слова для поиска в выбранной категории...">
+        </div>
+        <div class="list_container">
+            <ol class="list"></ol>
+        </div>
+        <div class="menu_footer">
+            <input type="input" id="task" placeholder="Введите описание задачи...">
+            <button class="add_button">Добавить</button>
+        </div>
+    </div>
+    <script>
+        function View(){
+            let container = null;
+
+            this.init = function(cont){
+                container = cont;
+            };
+            this.buildList = function(userData){
+                const ol = document.querySelector('.list');
+                ol.innerHTML = '';
+                for(let i = 0; i < userData.length; i++){
+                const li = document.createElement('li');
+                li.innerHTML = `<input type="checkbox" class="checkbox"${Object.keys(userData[i]) == 'true' ? 'checked' : ''}><span class="to-do">${Object.values(userData[i])}</span><span class="edit">&#9998</span><span class="delete">&#10006;</span>`;
+                ol.appendChild(li);
+                };
+            };
+            this.showData = function(index){
+                let liList = container.querySelectorAll('.to-do');
+                for(let i = 0; i < liList.length; i++){
+                    liList[i].parentNode.classList.remove('inactive');
+                    if(index == '0'){
+                        liList[i].parentNode.classList.remove('inactive');
+                    };
+                    if(index == '1' && !liList[i].previousSibling.checked){
+                        liList[i].parentNode.classList.add('inactive');
+                    };
+                    if(index == '2' && liList[i].previousSibling.checked){
+                        liList[i].parentNode.classList.add('inactive');
+                    };
+                };
+                
+            };
+            this.searchItem = function(sort, value){
+                let liList = container.querySelectorAll('.to-do');
+                for(let i = 0; i < liList.length; i++){
+                    if(!liList[i].innerText.toLowerCase().includes(value.toLowerCase())){
+                        liList[i].parentNode.style.display = 'none';
+                    } else{
+                        liList[i].parentNode.style.display = '';
+                    };
+                };
+            };
+            this.deleteItem = function(target){
+                const ol = document.querySelector('.list');
+                ol.removeChild(target.parentNode);
+            };
+        };
+
+        function Model(){
+            let view = null;
+            let userData = null;
+
+            this.init = function(vie){
+                view = vie;
+                setData();
+                view.buildList(userData);
+            };
+
+            setData = function(){
+                let defaultData = [
+                    {true : 'Каждая задача должна иметь текстовое описание и статус выполнена / не выполнена (должен быть checkbox или select).'},
+                    {true : 'Пользователь должен иметь возможность добавлять и удалять задачи, менять их описание, менять статус выполнения.'},
+                    {true : 'Пользователь должен иметь возможность отфильтровать задачи по тексту, т.е. видеть только те, которые в свое описание содержат определенное слово / слова.'},
+                    {true : 'Пользователь должен иметь возможность просмотреть только сделанные / только не сделанные / все задачи.'},
+                    {true : 'Фильтры по статусу и по тексту можно комбинировать, т.е. просматривать, например, все задачи, которые сделаны и содержат слово “купить” в тексте.'},
+                    {true : 'Опционально: список задач должен сохраняться между перегрузками вкладки браузера.'}
+                ];
+                if(localStorage.getItem('toDoUserData')){
+                    userData = JSON.parse(localStorage.getItem('toDoUserData'));
+                }  else {
+                    userData = defaultData;
+                };
+            };
+            saveData = function(){
+                localStorage.removeItem('toDoUserData');
+                localStorage.setItem('toDoUserData', JSON.stringify(userData));
+            };
+            this.addItem = function(data){
+                userData.push({false : data});
+                saveData();
+                view.buildList(userData);
+            };
+            this.deleteItem = function(target, index){
+                userData.splice(index,1);
+                view.deleteItem(target);
+                saveData();
+                // view.buildList(userData);
+            };
+            this.editItem = function(target, index){
+                target = target.previousSibling;
+                let state = Object.keys(userData[index]);
+                target.innerHTML = `<input id="popup" type="input" value ="${target.innerText}">`;
+                let popup = target.querySelector('#popup');
+                    popup.addEventListener('blur', function replace(){
+                    this.replaceWith(this.value);
+                    userData[index] = {[state] : this.value};
+                    saveData();
+                    popup.removeEventListener('blur', replace);
+                    });
+                popup.focus();
+            };
+            this.sortData = function(index){
+                view.showData(index);
+            };
+            this.searchItem = function(sort, value){
+                view.searchItem(sort, value)
+            };
+            this.changeState = function(target, index){
+                let state = target.checked;
+                userData[index] = {[state] : target.nextSibling.innerText};
+                saveData();
+            };
+        };
+
+        function Controller(){
+            let model = null,
+            container = null;
+
+            this.init = function(mod, cont){
+                model = mod;
+                container = cont;
+                setListeners();
+            };
+            setListeners = function(){
+                const addButton = container.querySelector('.add_button');
+                const sort = container.querySelector('#sort');
+                const ol = container.querySelector('.list');
+                const searchField = container.querySelector('#search-field');
+                
+                addButton.addEventListener('click', addItem);
+                ol.addEventListener('click', function(event){
+                if(event.target.classList.contains('edit')) editItem(event.target);
+                if(event.target.classList.contains('delete')) deleteItem(event.target);
+                if(event.target.classList.contains('checkbox')) changeState(event.target)
+                else return;
+            });
+                sort.addEventListener('change', function(event){
+                    model.sortData(event.target.selectedIndex);
+                });
+                searchField.addEventListener('input', function(event){
+                    model.searchItem(sort.selectedIndex, event.target.value);
+                });
+            };
+            addItem = function(){
+                const taskInput = container.querySelector('#task');
+                model.addItem(taskInput.value);
+                taskInput.value = '';
+                sort.selectedIndex = 0;
+            };
+            deleteItem = function(target){
+                model.deleteItem(target, getLiIndex(target, 'delete'));
+            };
+            editItem = function(target){
+                model.editItem(target, getLiIndex(target, 'edit'));
+            };
+            changeState = function(target){
+                model.changeState(target, getLiIndex(target, 'checkbox'))
+            };
+            getLiIndex = function(el, action){
+                let collection = document.getElementsByClassName(`${action}`);
+                for(let i = 0; i < collection.length; i++){
+                    if( collection[i] == el ) return i;
+                };
+            };
+
+        };
+            //init
+        let container = document.querySelector('.content');
+        let toDoController = new Controller();
+        let toDoModel = new Model();
+        let toDoView = new View();
+            toDoController.init(toDoModel, container);
+            toDoModel.init(toDoView);
+            toDoView.init(container);
+    </script>
+</body>
+</html>
